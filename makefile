@@ -4,8 +4,7 @@ LDFLAGS = -ltest
 
 OUT_DIR = build
 
-TEST_DIR = test
-TEST_SRC = $(shell find $(TEST_DIR) -name '*.c' -print)
+TEST_SRC = ./test/test_serializer.c
 TEST_OBJ = $(addprefix $(OUT_DIR)/,$(TEST_SRC:.c=.o))
 
 TEST_EXEC = test_exec
@@ -18,7 +17,6 @@ init_test :
 test : $(TEST_OBJ)
 	@$(CC) -o $(TEST_EXEC) $^ $(LDFLAGS)
 	@./$(TEST_EXEC)
-	@$(MAKE) clean >/dev/null
 
 $(OUT_DIR)/%.o : %.c
 	@mkdir -p $(shell dirname $@)

@@ -5,32 +5,6 @@
 
 #include "json.h"
 
-#define NULL_POINTER                    -3
-#define ALLOC_ERR                       -2
-
-#define JSON_INVALID                    -1
-#define JSON_NULL                       0
-#define JSON_NUMBER                     1
-#define JSON_STRING                     2
-#define JSON_OBJECT                     3
-#define JSON_ARRAY                      4
-
-#define JSON_NULL_VALUE                 "null"
-
-#define JSON_NUMBER_MIN                 '0'
-#define JSON_NUMBER_MAX                 '9'
-#define JSON_NUMBER_NEG                 '-'
-#define JSON_NUMBER_POS                 '+'
-
-#define JSON_STRING_START               '"'
-#define JSON_STRING_END                 '"'
-
-#define JSON_OBJECT_START               '{'
-#define JSON_OBJECT_END                 '}'
-#define JSON_OBJECT_SEP                 ','
-#define JSON_OBJECT_KEY_SEP             ':'
-
-
 static inline void skip_spaces(char **ptr){
     while(isspace(**ptr)) (*ptr)++;
 }
@@ -47,30 +21,37 @@ static inline int is_string(char c){
     return c == JSON_STRING_START;
 }
 
-static inline int is_object(char c){
-    return c == JSON_OBJECT_START;
+static inline int is(char c, char expected){
+    return c == expected;
 }
 
-static int is_object_empty(char *iter){
+static int is_empty(char *iter, char end){
     iter++, skip_spaces(&iter);
-    return *iter == JSON_OBJECT_END;
+    return *iter == end;
 }
 
-static int get_object_length(char *iter){
+static void move_end(char **ptr, char end){
+    (*ptr)++, skip_spaces(ptr), (*ptr)++;
+}
 
-    int length = 1;
+static int get_size(char *iter, char end, char sep, char start){
 
-    while(*iter && *iter != JSON_OBJECT_END){
-        if(*iter == JSON_OBJECT_SEP) length++;
+    int size = 1, depth = 0;
+    iter++;
+    while(*iter && (*iter != end || depth)){
+        if(*iter == sep && !depth) size++;
+        else if(*iter == start) depth++;
+        else if(*iter == end) depth--;
         iter++;
     }
     
-    return (*iter == JSON_OBJECT_END) ? length : 0;
+    return (*iter == end) ? size : 0;
 }
 
-static int attr_parse(char **ptr, struct json_attr *buf){
+static int object_attr_parse(char **ptr, struct json_attr *buf){
 
     int result;
+
     (*ptr)++, skip_spaces(ptr);
     if(result = json_string_parse(ptr, &(buf->key)), result != JSON_STRING){
         return result;
@@ -91,9 +72,24 @@ static int attr_parse(char **ptr, struct json_attr *buf){
     buf->type = result;
     return result;
 
-}  
+} 
+
+static int array_attr_parse(char **ptr, struct json_attr *buf){
+
+    int result;
+
+    (*ptr)++, skip_spaces(ptr);
+    if(result = json_parse(ptr, &(buf->value)), result == JSON_INVALID){
+        return result;
+    } 
+    
+    buf->type = result;
+    return result;
+
+}
 
 int json_null_parse(char **ptr){
+    if(!ptr) return NULL_POINTER;
     int null_len = strlen(JSON_NULL_VALUE);
     for(int i = 0; i < null_len; i++, (*ptr)++)
         if(**ptr != JSON_NULL_VALUE[i]) return JSON_INVALID;
@@ -102,7 +98,7 @@ int json_null_parse(char **ptr){
 
 int json_number_parse(char **ptr, double *buf){
 
-    if(!buf) return NULL_POINTER;
+    if(!buf || !ptr) return NULL_POINTER;
     if(!is_number(**ptr)) return JSON_INVALID;
 
     char *end = *ptr;
@@ -114,7 +110,7 @@ int json_number_parse(char **ptr, double *buf){
 
 int json_string_parse(char **ptr, char **buf){
 
-    if(!buf) return NULL_POINTER;
+    if(!buf || !ptr) return NULL_POINTER;
     if(!is_string(**ptr)) return JSON_INVALID;
 
     const char *start = ++(*ptr);
@@ -132,42 +128,54 @@ int json_string_parse(char **ptr, char **buf){
 
 }
 
-int json_object_parse(char **ptr, struct json_object **buf){
+// It's looooooooooonng
+static int array_or_object_parse(char **ptr, struct json **buf, char start, char sep, char end, int success,
+int(*attr_parse)(char **, struct json_attr *)){
 
-    if(!buf) return NULL_POINTER;
-    if(!is_object(**ptr)) return JSON_INVALID;
-    
-    if(is_object_empty(*ptr)){
-        *buf = json_object_create(0);
-        return (!*buf) ? ALLOC_ERR : JSON_OBJECT; 
+    if(!buf || !ptr) return NULL_POINTER;
+    if(!is(**ptr, start)) return JSON_INVALID;
+
+    if(is_empty(*ptr, end)){
+        move_end(ptr, end);
+        *buf = json_create(0);
+        return  (!(*buf)) ? ALLOC_ERR : success; 
     }
-    int length = get_object_length(*ptr);
-    if(!length) return JSON_INVALID;
-    
-    *buf = json_object_create(length);
-    if(!*buf) return ALLOC_ERR; 
 
+    int size = get_size(*ptr, end, sep, start);
+    if(!size) return JSON_INVALID;
+    *buf = json_create(size);
+    if(!(*buf)) return ALLOC_ERR;
+    
     int counter = 0, result;
+
     do{
 
         result = attr_parse(ptr, &((*buf)->values[counter]));
         if(result == JSON_INVALID){
-            (*buf)->length = counter - 1;
-            json_object_dispose(*buf);
+            (*buf)->size = counter - 1;
+            json_dispose(*buf);
             return result;
         }
         skip_spaces(ptr);
         counter += 1;
 
-    } while (**ptr == JSON_OBJECT_SEP);
+    } while (**ptr == sep);
 
-    if(**ptr != JSON_OBJECT_END){
-        json_object_dispose(*buf);
+    if(**ptr != end){
+        json_dispose(*buf);
         return JSON_INVALID;
     }
 
-    return JSON_OBJECT;
+    return (*ptr)++, success;
 
+}
+
+int json_object_parse(char **ptr, struct json **buf){
+    return array_or_object_parse(ptr, buf, JSON_OBJECT_START, JSON_OBJECT_SEP, JSON_OBJECT_END, JSON_OBJECT, object_attr_parse);
+}
+
+int json_array_parse(char **ptr, struct json **buf){
+    return array_or_object_parse(ptr, buf, JSON_ARRAY_START, JSON_ARRAY_SEP, JSON_ARRAY_END, JSON_ARRAY, array_attr_parse);
 }
 
 int json_parse(char **ptr, union json_value *buf){
@@ -189,9 +197,13 @@ int json_parse(char **ptr, union json_value *buf){
 
         return json_string_parse(ptr, &(buf->string));
 
-    } else if(is_object(**ptr)){
+    } else if(is(**ptr, JSON_OBJECT_START)){
         
         return json_object_parse(ptr, &(buf->object));
+
+    } else if(is(**ptr, JSON_ARRAY_START)){
+        
+        return json_array_parse(ptr, &(buf->object));
 
     } else {
 
@@ -201,35 +213,37 @@ int json_parse(char **ptr, union json_value *buf){
 
 }
 
-struct json_object *json_object_create(int length){
+/* ---------------------- Memory management ---------------------- */
 
-    if(length < 0) return NULL;
+struct json *json_create(int size){
 
-    struct json_object *obj = malloc(sizeof(struct json_object));
-    if(!obj) return NULL;
-    memset(obj, 0, sizeof(struct json_object));
+    if(size < 0) return NULL;
 
-    if(length){
-        obj->length = length;
-        obj->values = calloc(length, sizeof(struct json_attr));
-        if(!obj->values) return free(obj), NULL; 
+    struct json *ptr = malloc(sizeof(struct json));
+    if(!ptr) return NULL;
+    memset(ptr, 0, sizeof(struct json));
+
+    if(size){
+        ptr->size = size;
+        ptr->values = calloc(size, sizeof(struct json_attr));
+        if(!ptr->values) return free(ptr), NULL; 
     }
 
-    return obj;
+    return ptr;
 
 }
 
-void json_object_dispose(struct json_object* obj){
+void json_dispose(struct json *obj){
 
-    for(int i = 0; i < obj->length; i++){
-        
-        if(obj->values[i].type == JSON_OBJECT){
-            json_object_dispose(obj->values[i].value.object);
+    for(int i = 0; i < obj->size; i++){
+
+        if(obj->values[i].type == JSON_OBJECT || obj->values[i].type == JSON_ARRAY){
+            json_dispose(obj->values[i].value.object);
         } else if (obj->values[i].type == JSON_STRING){
             free(obj->values[i].value.string);
         }
 
-        free(obj->values[i].key);
+        if(obj->values[i].key) free(obj->values[i].key);
 
     }
     
