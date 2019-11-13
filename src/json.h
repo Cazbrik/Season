@@ -18,18 +18,18 @@ struct json_object {
     struct json_attr *values;
 };
 
-int null_parse(char **);
+int json_null_parse(char **);
 
-int number_parse(char **, double *);
+int json_number_parse(char **, double *);
 
-int string_parse(char **, char **);
+int json_string_parse(char **, char **);
 
-int object_parse(char **, struct json_object **);
+int json_object_parse(char **, struct json_object **);
 
 int json_parse(char **, union json_value *);
 
-struct json_object *object_create(int);
+struct json_object *json_object_create(int);
 
-void object_dispose(struct json_object *);
+void json_object_dispose(struct json_object *);
 
 #endif
