@@ -34,14 +34,19 @@ static void move_end(char **ptr, char end){
     (*ptr)++, skip_spaces(ptr), (*ptr)++;
 }
 
+static void move_to(char **ptr, char end){
+    while(**ptr && **ptr != end) (*ptr)++;
+    
+}
+
 static int get_size(char *iter, char end, char sep, char start){
 
-    int size = 1, depth = 0;
+    int size = 1;
     iter++;
-    while(*iter && (*iter != end || depth)){
-        if(*iter == sep && !depth) size++;
-        else if(*iter == start) depth++;
-        else if(*iter == end) depth--;
+    while(*iter && *iter != end){
+        if(*iter == sep) size++;
+        else if(*iter == JSON_ARRAY_START) move_to(&iter, JSON_ARRAY_END);
+        else if(*iter == JSON_OBJECT_START) move_to(&iter, JSON_OBJECT_END);
         iter++;
     }
     

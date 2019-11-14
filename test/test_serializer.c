@@ -2,7 +2,7 @@
 #include "../src/json_serializer.c"
 #include "test_parser.c"
 
-#define TEST_SIZE 4096
+#define TEST_SIZE 1024
 
 #undef BEFORE_TEST
 #define BEFORE_TEST char string[TEST_SIZE] = {0}; freopen("/dev/null", "a", stdout); setbuf(stdout, string);
@@ -125,6 +125,7 @@ TEST(test_json_object_serialize, {
 });
 
 void test_serializer(){
+
     test_json_null_serialize();
     test_json_number_serialize();
     test_json_string_serialize();

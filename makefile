@@ -6,25 +6,35 @@ OUT_DIR = build
 
 TEST_SRC = ./test/test_serializer.c
 TEST_OBJ = $(addprefix $(OUT_DIR)/,$(TEST_SRC:.c=.o))
-
 TEST_EXEC = test_exec
 
-all : init_test test
+SRC_DIR = src
+SRC = $(shell find $(SRC_DIR) -name '*.c' -print)
+OBJ = $(addprefix $(OUT_DIR)/,$(SRC:.c=.o))
+LIB = libSeason
 
-init_test :
-	@$(MAKE) static -C libtest > /dev/null
+MV_DIR = /usr/local/lib/
+
+static : $(OBJ)
+	@ar -r $(LIB).a $^ > /dev/null
+	@ranlib $(LIB).a > /dev/null
+	@sudo mv $(LIB).a $(MV_DIR)
+
+dynamic : $(OBJ)
+	@$(CC) -shared -o $(LIB).so $^
+	@sudo mv $(LIB).so $(MV_DIR)
 
 test : $(TEST_OBJ)
+	@$(MAKE) static -C libtest > /dev/null
 	@$(CC) -o $(TEST_EXEC) $^ $(LDFLAGS)
 	@./$(TEST_EXEC)
+	@rm $(TEST_EXEC)
+	@$(MAKE) clean -C libtest > /dev/null
 
 $(OUT_DIR)/%.o : %.c
 	@mkdir -p $(shell dirname $@)
-	@$(CC) -o $@ -c $< $(CDFLAGS)
+	@$(CC) -o $@ -fpic -c $< $(CDFLAGS)
 
-clean_test : 
+clean:
 	@rm -rf $(OUT_DIR)
-	@rm $(TEST_EXEC)
-
-clean: clean_test
-	@$(MAKE) clean -C libtest > /dev/null	
+	@sudo rm $(MV_DIR)$(LIB).* > /dev/null
