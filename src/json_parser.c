@@ -213,8 +213,6 @@ int json_parse(char **ptr, union json_value *buf){
 
 }
 
-/* ---------------------- Memory management ---------------------- */
-
 struct json *json_create(int size){
 
     if(size < 0) return NULL;

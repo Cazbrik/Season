@@ -25,7 +25,7 @@ TEST(test_skip_spaces, {
     skip_spaces(&str);
     assert_int('\0' , *str);
 
-})
+});
 
 /* Test test_json_null_parse() operation */
 
@@ -81,7 +81,7 @@ TEST(test_json_string_parse, {
     str = "String\"";
     assert_int(JSON_INVALID, json_string_parse(&str, &buf));
 
-})
+});
 
 /* Test json_object_parse() operation */
 
@@ -128,7 +128,7 @@ TEST(test_json_object_parse, {
     assert_int(2, buf->size);
     json_dispose(buf);
 
-})
+});
 
 /* Test test_json_array_parse() operation */
 
@@ -176,7 +176,7 @@ TEST(test_json_array_parse, {
     assert_int(2, buf->size);
     json_dispose(buf);
 
-})
+});
 
 /* Test json_parse() operation */
 
@@ -222,7 +222,7 @@ TEST(test_json_parse, {
     assert_string("simple_object", buf.object->values[3].value.object->values[0].value.string);
     free(buf.object);
 
-})
+});
 
 void test_parser(){
     test_skip_spaces();

@@ -1,6 +1,8 @@
 #ifndef JSON_H
 #define JSON_H
 
+#include <stdio.h>
+
 /* Error that may be returned by operation */
 
 #define NULL_POINTER                    -11
@@ -55,6 +57,7 @@ struct json_attr {
     union json_value value;
 };
 
+/* ----- Parse operation ----- */
 
 int json_null_parse(char **ptr);
 
@@ -67,6 +70,20 @@ int json_object_parse(char **ptr, struct json **buf);
 int json_array_parse(char **ptr, struct json **buf);
 
 int json_parse(char **ptr, union json_value *buf);
+
+/* ----- Serialize operation ----- */
+
+void json_null_serialize(FILE *file);
+
+void json_number_serialize(FILE *file, double buf);
+
+void json_string_serialize(FILE *file, char *buf);
+
+void json_object_serialize(FILE *file, struct json *buf);
+
+void json_array_serialize(FILE *file, struct json *buf);
+
+void json_serialize(FILE *file, union json_value buf);
 
 /* ----- Struct operation ----- */
 
