@@ -3,12 +3,12 @@
 
 #include <stdio.h>
 
-/* Error that may be returned by operation */
+/* Code that may be returned by operation */
 
 #define NULL_POINTER                    -11
 #define ALLOC_ERR                       -10
 
-/* Json type used to build and parse Json */
+/* Json type used to parse Json */
 
 #define JSON_INVALID                    -1
 #define JSON_NULL                       0
@@ -51,9 +51,10 @@ union json_value {
     struct json *object;
 };
 
+
 struct json_attr {
     int type;
-    char *key;
+    char *key; /* /!\ For array this field should be null /!\ */
     union json_value value;
 };
 
@@ -73,17 +74,17 @@ int json_parse(char **ptr, union json_value *buf);
 
 /* ----- Serialize operation ----- */
 
-void json_null_serialize(FILE *file);
+int json_null_serialize(FILE *file);
 
-void json_number_serialize(FILE *file, double buf);
+int json_number_serialize(FILE *file, double buf);
 
-void json_string_serialize(FILE *file, char *buf);
+int json_string_serialize(FILE *file, char *buf);
 
-void json_object_serialize(FILE *file, struct json *buf);
+int json_object_serialize(FILE *file, struct json *buf);
 
-void json_array_serialize(FILE *file, struct json *buf);
+int json_array_serialize(FILE *file, struct json *buf);
 
-void json_serialize(FILE *file, union json_value buf);
+int json_serialize(FILE *file, union json_value buf, int type);
 
 /* ----- Struct operation ----- */
 
